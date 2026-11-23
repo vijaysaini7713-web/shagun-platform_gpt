@@ -28,3 +28,9 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Bank account numbers are encrypted server-side (AES-GCM, `PAYMENT_DETAILS_ENC_KEY`) in `savePaymentAccount`; only last 4 digits are readable — never select or log `bank_account_enc` from the client.
+- Direct UPI records start as `awaiting_bank_confirmation` and change only via the `verify_upi_payment` RPC (owner/finance, audit logged); totals count `verified` only.
+- Sandbox simulated payments are accepted only on `is_demo` weddings.
+- Public guest data goes through server functions in `src/lib/guest.functions.ts` that project safe columns only.

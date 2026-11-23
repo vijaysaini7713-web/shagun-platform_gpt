@@ -1,6 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { guestName, indianPhone, outcome, routeShagun, side } from "./validation";
+import { accountSideFor, type ReceivingMode } from "./upi";
+
+type Admin = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
+/** Guest-safe recipient info. Never returns full bank account numbers. */
+async function recipients(admin: Admin, weddingId: string, mode: ReceivingMode) {
+  const { data } = await admin
+    .from("payment_accounts")
+    .select("side, enabled, beneficiary_name, upi_vpa, show_bank_to_guests, bank_holder, bank_account_last4, ifsc, bank_name")
+    .eq("wedding_id", weddingId);
+  const pick = (s: "bride" | "groom") => {
+    const a = data?.find((x) => x.side === accountSideFor(mode, s));
+    if (!a || !a.enabled || !a.upi_vpa || !a.beneficiary_name) return null;
+    return {
+      accountSide: a.side, name: a.beneficiary_name, vpa: a.upi_vpa,
+      bank: a.show_bank_to_guests && a.bank_account_last4 ? { holder: a.bank_holder, last4: a.bank_account_last4, ifsc: a.ifsc, bank: a.bank_name } : null,
+    };
+  };
+  return { bride: pick("bride"), groom: pick("groom") };
+}
 
 const photo = z
   .string()
@@ -17,6 +36,7 @@ const submitSchema = z.object({
   physical: z.object({ description: z.string().trim().max(200).optional(), photo }).optional(),
   envelope: z.object({ amount: z.number().int().min(1).max(10_000_000).optional(), photo }).optional(),
   digital: z.object({ amount: z.number().int().min(1).max(500_000), outcome }).optional(),
+  upi: z.object({ amount: z.number().int().min(1).max(1_000_000), utr: z.string().regex(/^[A-Za-z0-9]{6,30}$/).optional(), proof: photo }).optional(),
 });
 
 function refCode() {
@@ -32,21 +52,23 @@ export const getPublicWedding = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: w } = await supabaseAdmin
       .from("weddings")
-      .select("bride_name, groom_name, event_date, venue, is_demo, allow_digital, welcome_message, slug")
+      .select("id, bride_name, groom_name, event_date, venue, is_demo, allow_digital, welcome_message, slug, receiving_mode")
       .eq("slug", data.slug)
       .maybeSingle();
-    return w;
+    if (!w) return null;
+    const { id, receiving_mode, ...safe } = w;
+    return { ...safe, recipients: await recipients(supabaseAdmin, id, receiving_mode as ReceivingMode) };
   });
 
 /** Public: guest submits declaration. Validated server-side; payments are sandbox simulations only. */
 export const submitGuest = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => submitSchema.parse(d))
   .handler(async ({ data }) => {
-    if (!data.physical && !data.envelope && !data.digital) throw new Error("Choose at least one gift type");
+    if (!data.physical && !data.envelope && !data.digital && !data.upi) throw new Error("Choose at least one gift type");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: w } = await supabaseAdmin
       .from("weddings")
-      .select("id, payment_routing, bride_receiver_label, groom_receiver_label, allow_digital")
+      .select("id, payment_routing, bride_receiver_label, groom_receiver_label, allow_digital, is_demo, receiving_mode")
       .eq("slug", data.slug)
       .maybeSingle();
     if (!w) throw new Error("Wedding not found");
@@ -81,7 +103,18 @@ export const submitGuest = createServerFn({ method: "POST" })
         amount: data.envelope.amount ?? null, photo_path: await upload(data.envelope.photo, "envelope"),
       });
     }
-    if (data.digital && w.allow_digital) {
+    if (data.upi) {
+      const r = (await recipients(supabaseAdmin, w.id, w.receiving_mode as ReceivingMode))[data.side];
+      if (r) {
+        await supabaseAdmin.from("upi_payments").insert({
+          wedding_id: w.id, guest_id: g.id, side: data.side, account_side: r.accountSide, payee_vpa: r.vpa, payee_name: r.name,
+          amount: data.upi.amount, utr: data.upi.utr ?? null, proof_path: await upload(data.upi.proof, "upi-proof"),
+          status: "awaiting_bank_confirmation",
+        });
+      }
+    }
+    // Simulated sandbox payments are only allowed on demo weddings.
+    if (data.digital && w.allow_digital && w.is_demo) {
       const r = routeShagun(w.payment_routing as never, data.side, { bride: w.bride_receiver_label, groom: w.groom_receiver_label });
       await supabaseAdmin.from("payments").insert({
         wedding_id: w.id, guest_id: g.id, side: r.side, routed_to: r.label, amount: data.digital.amount,
@@ -107,5 +140,6 @@ export const getReceipt = createServerFn({ method: "GET" })
       supabaseAdmin.from("gifts").select("kind, description, amount, status").eq("guest_id", g.id),
       supabaseAdmin.from("payments").select("amount, status, sandbox_ref, routed_to").eq("guest_id", g.id),
     ]);
-    return { guest: { name: g.name, side: g.side, relation: g.relation, ref: g.ref_code, at: g.created_at }, wedding: g.weddings, gifts: gifts ?? [], payments: pays ?? [] };
+    const { data: upi } = await supabaseAdmin.from("upi_payments").select("amount, status, payee_name, utr").eq("guest_id", g.id);
+    return { guest: { name: g.name, side: g.side, relation: g.relation, ref: g.ref_code, at: g.created_at }, wedding: g.weddings, gifts: gifts ?? [], payments: pays ?? [], upi: upi ?? [] };
   });

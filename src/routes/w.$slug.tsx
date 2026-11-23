@@ -1,7 +1,9 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Camera, Gift, Mail, Sparkles } from "lucide-react";
+import { Camera, Copy, Gift, IndianRupee, Mail, Sparkles, Smartphone } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { buildUpiUri } from "@/lib/upi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +67,10 @@ function GuestFlow() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Partial<Record<"side" | "relation" | "name" | "phone", string>>>({});
-  const [pick, setPick] = useState({ physical: false, envelope: false, digital: false });
+  const [pick, setPick] = useState({ physical: false, envelope: false, digital: false, upi: false });
+  const [uAmt, setUAmt] = useState("1100");
+  const [utr, setUtr] = useState("");
+  const [uProof, setUProof] = useState<string>();
   const [pDesc, setPDesc] = useState("");
   const [pPhoto, setPPhoto] = useState<string>();
   const [ePhoto, setEPhoto] = useState<string>();
@@ -85,8 +90,11 @@ function GuestFlow() {
   }
 
   async function submit() {
-    if (!pick.physical && !pick.envelope && !pick.digital) { toast.error("Choose at least one"); return; }
+    if (!pick.physical && !pick.envelope && !pick.digital && !pick.upi) { toast.error("Choose at least one"); return; }
     const digitalAmount = Number(dAmt);
+    const upiAmount = Number(uAmt);
+    if (pick.upi && (!Number.isInteger(upiAmount) || upiAmount < 1)) { toast.error("Enter a valid UPI amount"); return; }
+    if (utr && !/^[A-Za-z0-9]{6,30}$/.test(utr)) { toast.error("UTR should be 6–30 letters/digits"); return; }
     if (pick.digital && (!Number.isInteger(digitalAmount) || digitalAmount < 1)) { toast.error("Enter a valid amount"); return; }
     setBusy(true);
     try {
@@ -96,6 +104,7 @@ function GuestFlow() {
           slug, side: side!, relation, name, phone,
           ...(pick.physical ? { physical: { description: pDesc || undefined, photo: pPhoto } } : {}),
           ...(pick.envelope ? { envelope: { amount: envAmount, photo: ePhoto } } : {}),
+          ...(pick.upi && recipient ? { upi: { amount: upiAmount, ...(utr ? { utr } : {}), proof: uProof } } : {}),
           ...(pick.digital ? { digital: { amount: digitalAmount, outcome: dOut } } : {}),
         },
       });
@@ -107,13 +116,15 @@ function GuestFlow() {
     }
   }
 
+  const recipient = side ? w.recipients[side] : null;
+  const upiUri = recipient && Number(uAmt) > 0 ? buildUpiUri({ vpa: recipient.vpa, name: recipient.name, amount: Number(uAmt), note: `Shagun ${w.groom_name} & ${w.bride_name}` }) : null;
   const card = "rounded-3xl border border-border bg-card p-6 shadow-elegant";
   return (
     <div className="min-h-screen mandala-bg">
       {w.is_demo && <DemoBanner />}
-      <div className="mx-auto flex max-w-md items-center justify-between px-4 py-4"><Logo /><LangSwitch /></div>
+      <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-4"><Logo /><LangSwitch /></div>
       <div className="mx-auto max-w-md px-4 pb-16">
-        <div className="mb-4 flex gap-1">{[0, 1, 2].map((i) => <div key={i} className={`h-1 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-border"}`} />)}</div>
+        <ol className="mb-5 grid grid-cols-3 gap-2 text-center text-[11px]" aria-label="Progress">{["Welcome", "Details", "Blessing"].map((l, i) => <li key={l} aria-current={i === step ? "step" : undefined}><div className={`h-1.5 rounded-full ${i <= step ? "bg-gold-gradient" : "bg-border"}`} /><span className={`mt-1 block ${i === step ? "font-semibold text-primary" : "text-muted-foreground"}`}>{t("step")} {i + 1} · {l}</span></li>)}</ol>
 
         {step === 0 && (
           <div className="overflow-hidden rounded-3xl shadow-elegant">
@@ -134,7 +145,7 @@ function GuestFlow() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               {(["bride", "groom"] as const).map((s) => (
                 <button key={s} onClick={() => setSide(s)}
-                  className={`rounded-2xl border-2 p-4 text-center font-semibold ${side === s ? "border-primary bg-secondary text-primary" : "border-border"}`}>
+                  aria-pressed={side === s} className={`min-h-20 rounded-2xl border-2 p-4 text-center font-semibold ${side === s ? "border-primary bg-secondary text-primary" : "border-border"}`}>
                   {s === "bride" ? `👰 ${t("brideSide")}` : `🤵 ${t("groomSide")}`}
                 </button>
               ))}
@@ -143,15 +154,15 @@ function GuestFlow() {
             <Label className="mt-5 block">{t("relation")}</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {relations.map((r) => (
-                <button key={r} onClick={() => setRelation(r)} className={`rounded-full border px-3 py-1 text-sm ${relation === r ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{r}</button>
+                <button key={r} onClick={() => setRelation(r)} className={`min-h-10 rounded-full border px-4 text-sm ${relation === r ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{r}</button>
               ))}
             </div>
             {errors.relation && <p className="mt-1 text-xs text-destructive">{errors.relation}</p>}
             <div className="mt-5 space-y-3">
-              <div><Label htmlFor="n">{t("yourName")} *</Label><Input id="n" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />{errors.name && <p className="text-xs text-destructive">{errors.name}</p>}</div>
-              <div><Label htmlFor="p">{t("phone")} *</Label><Input id="p" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="98XXXXXXXX" />{errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}</div>
+              <div><Label htmlFor="n">{t("yourName")} *</Label><Input id="n" className="h-12 text-base" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />{errors.name && <p className="text-xs text-destructive">{errors.name}</p>}</div>
+              <div><Label htmlFor="p">{t("phone")} *</Label><Input id="p" className="h-12 text-base" type="tel" autoComplete="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="98XXXXXXXX" />{errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}</div>
             </div>
-            <div className="mt-6 flex gap-3"><Button variant="outline" onClick={() => setStep(0)}>{t("back")}</Button><Button className="flex-1" size="lg" onClick={() => validateDetails() && setStep(2)}>{t("next")}</Button></div>
+            <div className="sticky bottom-0 -mx-6 mt-6 flex gap-3 border-t border-border bg-card/95 px-6 py-4 backdrop-blur"><Button variant="outline" size="lg" onClick={() => setStep(0)}>{t("back")}</Button><Button className="flex-1" size="lg" onClick={() => validateDetails() && setStep(2)}>{t("next")}</Button></div>
           </div>
         )}
 
@@ -167,17 +178,38 @@ function GuestFlow() {
                 <PhotoPick value={ePhoto} onChange={setEPhoto} label={`${t("photo")} (envelope)`} />
                 <Input placeholder={t("amountOptional")} inputMode="numeric" value={eAmt} onChange={(e) => setEAmt(e.target.value.replace(/\D/g, ""))} />
               </Option>
-              {w.allow_digital && (
-                <Option on={pick.digital} toggle={() => setPick({ ...pick, digital: !pick.digital })} icon={<Sparkles />} label={t("digital")} badge>
-                  <div className="rounded-lg bg-warning p-2 text-xs font-semibold text-warning-foreground">{t("sandboxOnly")}. No UPI, no card.</div>
-                  <div className="flex flex-wrap gap-2">{["501", "1100", "2100", "5100"].map((a) => <button key={a} onClick={() => setDAmt(a)} className={`rounded-full border px-3 py-1 text-sm ${dAmt === a ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>₹{a}</button>)}</div>
+              <div className="rounded-2xl border-2 border-gold bg-secondary/40">
+                {recipient ? (
+                  <Option on={pick.upi} toggle={() => setPick({ ...pick, upi: !pick.upi })} icon={<IndianRupee />} label={t("payViaUpi")}>
+                    <p className="text-xs text-muted-foreground">{t("upiExternal")}</p>
+                    <div className="flex flex-wrap gap-2">{["501", "1100", "2100", "5100", "11000"].map((a) => <button key={a} onClick={() => setUAmt(a)} className={`min-h-11 rounded-full border px-4 text-sm ${uAmt === a ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>₹{Number(a).toLocaleString("en-IN")}</button>)}</div>
+                    <Input className="h-12 text-lg" placeholder={t("amount")} inputMode="numeric" value={uAmt} onChange={(e) => setUAmt(e.target.value.replace(/\D/g, "").slice(0, 7))} />
+                    <div className="rounded-xl bg-card p-4 text-center ring-1 ring-border">
+                      <p className="text-sm text-muted-foreground">To</p>
+                      <p className="font-semibold">{recipient.name}</p>
+                      <div className="mt-1 flex items-center justify-center gap-2"><span className="break-all font-mono text-sm">{recipient.vpa}</span><Button size="sm" variant="ghost" aria-label={t("copy")} onClick={() => { navigator.clipboard.writeText(recipient.vpa); toast.success("Copied"); }}><Copy /></Button></div>
+                      {upiUri && <div className="mt-3 inline-block rounded-lg bg-card p-2 ring-1 ring-border"><QRCodeSVG value={upiUri} size={176} /></div>}
+                      {upiUri && <Button asChild size="xl" variant="royal" className="mt-3 w-full"><a href={upiUri}><Smartphone />{t("openUpiApp")} · ₹{Number(uAmt).toLocaleString("en-IN")}</a></Button>}
+                      {recipient.bank && <p className="mt-3 text-xs text-muted-foreground">Bank: {recipient.bank.holder} · {recipient.bank.bank} · IFSC {recipient.bank.ifsc} · A/c ••••{recipient.bank.last4}</p>}
+                    </div>
+                    <Input className="h-11" placeholder={t("utrOptional")} value={utr} onChange={(e) => setUtr(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 30))} />
+                    <PhotoPick value={uProof} onChange={setUProof} label={t("proofOptional")} />
+                    <p className="text-xs font-semibold text-primary">Status after submit: {t("status_awaiting_bank_confirmation")}</p>
+                  </Option>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 text-sm text-muted-foreground"><IndianRupee className="h-5 w-5 shrink-0" /><span><b className="text-foreground">{t("payViaUpi")}</b><br />{t("upiNotConfigured")}</span></div>
+                )}
+              </div>
+              {w.is_demo && w.allow_digital && (
+                <Option on={pick.digital} toggle={() => setPick({ ...pick, digital: !pick.digital })} icon={<Sparkles />} label={`${t("digital")} — SANDBOX TEST`} badge>
+                  <div className="rounded-lg bg-warning p-2 text-xs font-semibold text-warning-foreground">{t("sandboxOnly")}. Simulation for testing only — not a real payment, no gateway is connected.</div>
                   <Input placeholder={t("amount")} inputMode="numeric" value={dAmt} onChange={(e) => setDAmt(e.target.value.replace(/\D/g, ""))} />
                   <Label className="text-xs">{t("simulate")}</Label>
-                  <div className="grid grid-cols-3 gap-2">{outcomes.map((o) => <button key={o} onClick={() => setDOut(o)} className={`rounded-lg border p-2 text-xs capitalize ${dOut === o ? "border-primary bg-secondary font-semibold" : "border-border"}`}>{t(`status_${o}`)}</button>)}</div>
+                  <div className="grid grid-cols-3 gap-2">{outcomes.map((o) => <button key={o} onClick={() => setDOut(o)} className={`min-h-11 rounded-lg border p-2 text-xs ${dOut === o ? "border-primary bg-secondary font-semibold" : "border-border"}`}>{t(`status_${o}`)}</button>)}</div>
                 </Option>
               )}
             </div>
-            <div className="mt-6 flex gap-3"><Button variant="outline" onClick={() => setStep(1)}>{t("back")}</Button><Button className="flex-1" size="lg" variant="royal" disabled={busy} onClick={submit}>{busy ? "…" : t("submit")}</Button></div>
+            <div className="sticky bottom-0 -mx-6 mt-6 flex gap-3 border-t border-border bg-card/95 px-6 py-4 backdrop-blur"><Button variant="outline" size="lg" onClick={() => setStep(1)}>{t("back")}</Button><Button className="flex-1" size="lg" variant="royal" disabled={busy} onClick={submit}>{busy ? "…" : t("submit")}</Button></div>
           </div>
         )}
       </div>

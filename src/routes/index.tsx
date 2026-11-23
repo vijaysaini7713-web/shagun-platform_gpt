@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gift, Mail, QrCode, ShieldCheck, Smartphone, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DemoBanner, SiteHeader } from "@/components/app/SiteHeader";
+import { DemoBanner, SiteFooter, SiteHeader } from "@/components/app/SiteHeader";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
@@ -32,23 +32,23 @@ function Index() {
       <DemoBanner />
       <SiteHeader />
       <section className="mandala-bg">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-2 md:py-24">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:py-16 md:grid-cols-2 md:py-24">
           <div className="flex flex-col justify-center">
             <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-gold-foreground">
               {lang === "hi" ? "शादी के हर आशीर्वाद का हिसाब" : "Every blessing, accounted for"}
             </p>
-            <h1 className="text-5xl font-bold leading-tight text-primary md:text-6xl">{t("tagline")}</h1>
+            <h1 className="text-4xl font-bold leading-tight text-primary sm:text-5xl md:text-6xl">{t("tagline")}</h1>
             <p className="mt-5 max-w-md text-lg text-muted-foreground">
               {lang === "hi"
                 ? "मेहमान क्यूआर से उपहार दर्ज करें, स्टाफ़ काउंटर पर पुष्टि करे, परिवार सब एक जगह देखे।"
                 : "Guests declare gifts by QR, staff confirm them at the counter, and the family sees everything in one place."}
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
               <Button asChild size="xl" variant="royal"><Link to="/w/$slug" params={{ slug: "demo-wedding" }}><Gift />{t("tryGuest")}</Link></Button>
               <Button asChild size="xl" variant="gold"><Link to="/dashboard">{t("tryAdmin")}</Link></Button>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Payments are simulated in sandbox only. No real UPI or card payments until merchant verification.
+              {lang === "hi" ? "यूपीआई सीधे परिवार के बैंक में जाता है और परिवार द्वारा सत्यापित होता है। कोई लाइव पेमेंट गेटवे नहीं।" : "UPI goes directly to the family's bank and is verified by the family. No live payment gateway."}
             </p>
           </div>
           <div className="relative mx-auto w-full max-w-sm">
@@ -79,14 +79,14 @@ function Index() {
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
-            <div key={f.en} className="rounded-2xl border border-border bg-card p-6">
+            <div key={f.en} className="card-premium p-6">
               <f.icon className="h-7 w-7 text-gold" />
               <h3 className="mt-4 text-xl font-semibold text-primary">{lang === "hi" ? f.hi : f.en}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{f.d}</p>
             </div>
           ))}
         </div>
-        <div className="mt-12 rounded-2xl border border-border bg-secondary p-6">
+        <div className="card-premium mt-12 bg-secondary p-6">
           <h2 className="text-2xl font-semibold text-primary">How to test the demo</h2>
           <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-secondary-foreground">
             <li>Open the guest journey on your phone and submit a gift — you get a receipt code and QR.</li>
@@ -96,9 +96,7 @@ function Index() {
           </ol>
         </div>
       </section>
-      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        ShagunSetu · Demo build · All couples, guests and amounts are fictional.
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

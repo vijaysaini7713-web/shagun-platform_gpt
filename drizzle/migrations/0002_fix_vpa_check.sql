@@ -1,0 +1,2 @@
+alter table public.payment_accounts drop constraint if exists payment_accounts_upi_vpa_check;
+alter table public.payment_accounts add constraint payment_accounts_upi_vpa_check check (upi_vpa is null or upi_vpa ~ '^[a-zA-Z0-9._-]{2,255}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$');

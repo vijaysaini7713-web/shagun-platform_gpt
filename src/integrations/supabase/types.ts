@@ -201,6 +201,68 @@ export type Database = {
           },
         ]
       }
+      payment_accounts: {
+        Row: {
+          bank_account_enc: string | null
+          bank_account_last4: string | null
+          bank_holder: string | null
+          bank_name: string | null
+          beneficiary_name: string | null
+          enabled: boolean
+          id: string
+          ifsc: string | null
+          notes: string | null
+          show_bank_to_guests: boolean
+          side: string
+          updated_at: string
+          updated_by: string | null
+          upi_vpa: string | null
+          wedding_id: string
+        }
+        Insert: {
+          bank_account_enc?: string | null
+          bank_account_last4?: string | null
+          bank_holder?: string | null
+          bank_name?: string | null
+          beneficiary_name?: string | null
+          enabled?: boolean
+          id?: string
+          ifsc?: string | null
+          notes?: string | null
+          show_bank_to_guests?: boolean
+          side: string
+          updated_at?: string
+          updated_by?: string | null
+          upi_vpa?: string | null
+          wedding_id: string
+        }
+        Update: {
+          bank_account_enc?: string | null
+          bank_account_last4?: string | null
+          bank_holder?: string | null
+          bank_name?: string | null
+          beneficiary_name?: string | null
+          enabled?: boolean
+          id?: string
+          ifsc?: string | null
+          notes?: string | null
+          show_bank_to_guests?: boolean
+          side?: string
+          updated_at?: string
+          updated_by?: string | null
+          upi_vpa?: string | null
+          wedding_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_accounts_wedding_id_fkey"
+            columns: ["wedding_id"]
+            isOneToOne: false
+            referencedRelation: "weddings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -276,6 +338,75 @@ export type Database = {
         }
         Relationships: []
       }
+      upi_payments: {
+        Row: {
+          account_side: string
+          amount: number
+          created_at: string
+          guest_id: string
+          id: string
+          payee_name: string
+          payee_vpa: string
+          proof_path: string | null
+          side: string
+          status: string
+          utr: string | null
+          verified_at: string | null
+          verified_by: string | null
+          verify_note: string | null
+          wedding_id: string
+        }
+        Insert: {
+          account_side: string
+          amount: number
+          created_at?: string
+          guest_id: string
+          id?: string
+          payee_name: string
+          payee_vpa: string
+          proof_path?: string | null
+          side: string
+          status?: string
+          utr?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          wedding_id: string
+        }
+        Update: {
+          account_side?: string
+          amount?: number
+          created_at?: string
+          guest_id?: string
+          id?: string
+          payee_name?: string
+          payee_vpa?: string
+          proof_path?: string | null
+          side?: string
+          status?: string
+          utr?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          verify_note?: string | null
+          wedding_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upi_payments_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upi_payments_wedding_id_fkey"
+            columns: ["wedding_id"]
+            isOneToOne: false
+            referencedRelation: "weddings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wedding_members: {
         Row: {
           created_at: string
@@ -323,6 +454,7 @@ export type Database = {
           id: string
           is_demo: boolean
           payment_routing: string
+          receiving_mode: string
           slug: string
           tenant_id: string
           venue: string | null
@@ -339,6 +471,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           payment_routing?: string
+          receiving_mode?: string
           slug: string
           tenant_id: string
           venue?: string | null
@@ -355,6 +488,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           payment_routing?: string
+          receiving_mode?: string
           slug?: string
           tenant_id?: string
           venue?: string | null
@@ -406,6 +540,10 @@ export type Database = {
       join_demo_wedding: {
         Args: { _role: Database["public"]["Enums"]["wedding_role"] }
         Returns: string
+      }
+      verify_upi_payment: {
+        Args: { _id: string; _note: string; _status: string }
+        Returns: undefined
       }
     }
     Enums: {

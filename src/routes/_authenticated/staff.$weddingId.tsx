@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DemoBanner, SiteHeader, StatusBadge } from "@/components/app/SiteHeader";
+import { DemoBanner, SiteFooter, SiteHeader, StatusBadge } from "@/components/app/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import { useI18n } from "@/lib/i18n";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/staff/$weddingId")({
 function Scanner({ onCode }: { onCode: (c: string) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [on, setOn] = useState(false);
+  const { t } = useI18n();
   const supported = typeof window !== "undefined" && "BarcodeDetector" in window;
   useEffect(() => {
     if (!on) return;
@@ -45,7 +46,7 @@ function Scanner({ onCode }: { onCode: (c: string) => void }) {
   if (!supported) return null;
   return on ? (
     <div className="space-y-2"><video ref={ref} className="w-full rounded-xl" muted playsInline /><Button variant="outline" onClick={() => setOn(false)}>Stop</Button></div>
-  ) : <Button variant="outline" size="lg" onClick={() => setOn(true)}><Camera />Scan QR</Button>;
+  ) : <Button variant="gold" size="xl" className="w-full sm:w-auto" onClick={() => setOn(true)}><Camera />{t("scanQr")}</Button>;
 }
 
 function Staff() {
@@ -99,28 +100,33 @@ function Staff() {
     <div className="min-h-screen">
       {r.data?.wedding?.is_demo && <DemoBanner />}
       <SiteHeader />
+      <section className="bg-royal px-4 py-6 text-primary-foreground">
+        <div className="mx-auto max-w-3xl">
+          <Link to="/dashboard" className="text-sm opacity-80">← {t("dashboard")}</Link>
+          <h1 className="mt-1 text-4xl">{t("staffCounter")}</h1>
+          {r.data?.wedding && <p className="truncate text-gold">{r.data.wedding.groom_name} & {r.data.wedding.bride_name}</p>}
+        </div>
+      </section>
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <Link to="/dashboard" className="text-sm text-muted-foreground">← Dashboard</Link>
-        <h1 className="text-4xl text-primary">{t("staffCounter")}</h1>
-        {r.data?.wedding && <p className="text-muted-foreground">{r.data.wedding.groom_name} & {r.data.wedding.bride_name}</p>}
-        {r.data && !canAct && <p className="mt-2 rounded-lg bg-warning p-3 text-sm text-warning-foreground">Your role can view but not update gifts here.</p>}
+        {r.data && !canAct && <p className="mb-4 rounded-xl bg-warning p-3 text-sm text-warning-foreground">{t("viewOnly")}</p>}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Label>Counter</Label>
-          <select className="h-10 rounded-md border border-input bg-background px-2" value={counter} onChange={(e) => setCounter(e.target.value)}>
+        <div className="card-premium grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 p-4">
+          <Label htmlFor="ctr">{t("counter")}</Label>
+          <select id="ctr" className="h-12 w-full min-w-0 rounded-md border border-input bg-background px-3" value={counter} onChange={(e) => setCounter(e.target.value)}>
             <option value="">—</option>{counters.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
 
-        <div className="mt-4 space-y-3 rounded-2xl border border-border bg-card p-4">
+        <div className="card-premium mt-4 space-y-3 p-4">
           <div className="relative"><Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" /><Input className="h-12 pl-10 text-base" placeholder={t("search")} value={q} onChange={(e) => { setQ(e.target.value.toUpperCase().startsWith("SS-") || e.target.value.toUpperCase().startsWith("DEMO-") ? e.target.value.toUpperCase() : e.target.value); setSel(null); }} /></div>
+          <p className="text-xs text-muted-foreground">{t("searchHint")}</p>
           <Scanner onCode={onScan} />
           {results.data && !sel && (
             <div className="divide-y divide-border">
-              {results.data.length === 0 && <p className="py-3 text-sm text-muted-foreground">No match.</p>}
+              {results.data.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t("noMatch")}</p>}
               {results.data.map((g) => (
-                <button key={g.id} onClick={() => setSel(g.id)} className="flex w-full items-center justify-between py-3 text-left">
-                  <div><p className="font-semibold">{g.name}</p><p className="text-xs text-muted-foreground">{g.ref_code} · {g.side} · {g.relation} · ••••{g.phone.slice(-4)}</p></div>
+                <button key={g.id} onClick={() => setSel(g.id)} className="flex min-h-16 w-full items-center justify-between gap-3 py-3 text-left">
+                  <div className="min-w-0"><p className="font-semibold">{g.name}</p><p className="truncate text-xs text-muted-foreground">{g.ref_code} · {g.side} · {g.relation} · ••••{g.phone.slice(-4)}</p></div>
                   <span className="text-primary">›</span>
                 </button>
               ))}
@@ -129,8 +135,8 @@ function Staff() {
         </div>
 
         {sel && guest && (
-          <div className="mt-4 rounded-2xl border-2 border-primary bg-card p-4">
-            <div className="flex items-start justify-between"><div><p className="text-xl font-semibold">{guest.name}</p><p className="font-mono text-sm text-muted-foreground">{guest.ref_code}</p></div><Button size="sm" variant="ghost" onClick={() => setSel(null)}>Close</Button></div>
+          <div className="card-premium mt-4 border-2 border-primary p-4">
+            <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xl font-semibold">{guest.name}</p><p className="font-mono text-sm text-muted-foreground">{guest.ref_code}</p></div><Button size="lg" variant="ghost" onClick={() => setSel(null)}>{t("cancel")}</Button></div>
             <div className="mt-3 space-y-3">
               {gifts.data?.map((g) => <GiftCard key={g.id} g={g} canAct={!!canAct} onReceive={(amount) => update(g.id, { status: "received", received_at: new Date().toISOString(), counter_id: counter || g.counter_id, ...(amount != null ? { amount } : {}) }, "received", `${g.kind} for ${guest.ref_code} marked received${amount ? ` (${inr(amount)})` : ""}`)} onHandover={(to) => update(g.id, { status: "handed_over", handed_to: to, handed_over_at: new Date().toISOString() }, "handover", `${g.kind} for ${guest.ref_code} handed to ${to}`)} />)}
               {gifts.data?.length === 0 && <p className="text-sm text-muted-foreground">No gifts declared.</p>}
@@ -140,6 +146,7 @@ function Staff() {
 
         {canAct && <WalkIn wid={weddingId} counter={counter} onDone={(ref) => setQ(ref)} log={log} />}
       </main>
+      <SiteFooter />
     </div>
   );
 }
@@ -150,21 +157,21 @@ function GiftCard({ g, canAct, onReceive, onHandover }: { g: G; canAct: boolean;
   const [amt, setAmt] = useState(g.amount ? String(g.amount) : "");
   const [to, setTo] = useState("");
   return (
-    <div className="rounded-xl bg-muted p-3">
+    <div className="rounded-xl bg-muted p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 font-medium">{g.kind === "physical" ? <Gift className="h-4 w-4" /> : <Mail className="h-4 w-4" />}{g.description} {g.amount ? `· ${inr(g.amount)}` : ""}</span>
+        <span className="flex min-w-0 items-center gap-2 font-medium">{g.kind === "physical" ? <Gift className="h-4 w-4" /> : <Mail className="h-4 w-4" />}{g.description} {g.amount ? `· ${inr(g.amount)}` : ""}</span>
         <StatusBadge s={g.status} />
       </div>
       {canAct && g.status === "declared" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {g.kind === "envelope" && <Input className="h-11 max-w-[10rem]" inputMode="numeric" placeholder="Counted ₹" value={amt} onChange={(e) => setAmt(e.target.value.replace(/\D/g, ""))} />}
-          <Button size="lg" onClick={() => onReceive(amt ? Number(amt) : undefined)}>{t("markReceived")}</Button>
+        <div className="mt-3 grid gap-2 sm:flex">
+          {g.kind === "envelope" && <Input className="h-12 sm:max-w-[10rem]" inputMode="numeric" placeholder="Counted ₹" value={amt} onChange={(e) => setAmt(e.target.value.replace(/\D/g, ""))} />}
+          <Button size="xl" onClick={() => onReceive(amt ? Number(amt) : undefined)}>{t("markReceived")}</Button>
         </div>
       )}
       {canAct && g.status === "received" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Input className="h-11 max-w-[14rem]" placeholder="Handed to (family member)" value={to} onChange={(e) => setTo(e.target.value)} />
-          <Button size="lg" variant="gold" disabled={to.trim().length < 2} onClick={() => onHandover(to.trim())}>{t("handover")}</Button>
+        <div className="mt-3 grid gap-2 sm:flex">
+          <Input className="h-12 sm:max-w-[16rem]" placeholder="Handed to (family member)" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Button size="xl" variant="gold" disabled={to.trim().length < 2} onClick={() => onHandover(to.trim())}>{t("handover")}</Button>
         </div>
       )}
       {g.handed_to && <p className="mt-2 text-xs text-muted-foreground">→ {g.handed_to}</p>}
@@ -175,6 +182,7 @@ function GiftCard({ g, canAct, onReceive, onHandover }: { g: G; canAct: boolean;
 function WalkIn({ wid, counter, onDone, log }: { wid: string; counter: string; onDone: (ref: string) => void; log: (a: string, d: string) => Promise<void> }) {
   const [f, setF] = useState({ name: "", phone: "", side: "bride" as "bride" | "groom", relation: "Guest", kind: "envelope" as "envelope" | "physical", desc: "", amount: "" });
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   async function save() {
     const n = guestName.safeParse(f.name), p = indianPhone.safeParse(f.phone);
     if (!n.success || !p.success) { toast.error(!n.success ? n.error.issues[0]!.message : p.error!.issues[0]!.message); return; }
@@ -187,16 +195,16 @@ function WalkIn({ wid, counter, onDone, log }: { wid: string; counter: string; o
     toast.success(`Recorded · ${ref}`); setOpen(false); onDone(ref);
   }
   return (
-    <div className="mt-6 rounded-2xl border border-border bg-secondary p-4">
-      {!open ? <Button variant="outline" onClick={() => setOpen(true)}>+ Record walk-in envelope / gift</Button> : (
+    <div className="card-premium mt-6 p-4">
+      {!open ? <Button variant="outline" size="xl" className="w-full" onClick={() => setOpen(true)}>+ {t("walkIn")}</Button> : (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input placeholder="Guest name *" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-          <Input placeholder="Mobile *" inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
-          <select className="h-9 rounded-md border border-input bg-background px-2" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value as never })}><option value="bride">Bride side</option><option value="groom">Groom side</option></select>
-          <select className="h-9 rounded-md border border-input bg-background px-2" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as never })}><option value="envelope">Envelope</option><option value="physical">Physical gift</option></select>
-          <Input placeholder="Description" value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} />
-          <Input placeholder="Amount ₹ (optional)" inputMode="numeric" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/\D/g, "") })} />
-          <div className="flex gap-2 sm:col-span-2"><Button onClick={save}>Save as received</Button><Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Badge variant="demo" className="ml-auto self-center">Demo</Badge></div>
+          <Input className="h-12" placeholder="Guest name *" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <Input className="h-12" placeholder="Mobile *" inputMode="numeric" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
+          <select className="h-12 rounded-md border border-input bg-background px-2" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value as never })}><option value="bride">Bride side</option><option value="groom">Groom side</option></select>
+          <select className="h-12 rounded-md border border-input bg-background px-2" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as never })}><option value="envelope">Envelope</option><option value="physical">Physical gift</option></select>
+          <Input className="h-12" placeholder="Description" value={f.desc} onChange={(e) => setF({ ...f, desc: e.target.value })} />
+          <Input className="h-12" placeholder="Amount ₹ (optional)" inputMode="numeric" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value.replace(/\D/g, "") })} />
+          <div className="flex flex-wrap gap-2 sm:col-span-2"><Button size="lg" onClick={save}>{t("saveReceived")}</Button><Button size="lg" variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button><Badge variant="demo" className="ml-auto self-center">Demo</Badge></div>
         </div>
       )}
     </div>
