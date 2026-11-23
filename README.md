@@ -1,16 +1,29 @@
-# ShagunSetu — Wedding Gift & Shagun Management SaaS
+# Welcome to your Lovable project
 
-Responsive Hindi/English multi-wedding gift registration, gift-counter workflows, digital shagun sandbox and wedding management dashboard.
+This project was built with [Lovable](https://lovable.dev).
 
-## Live demo
-The hosted test preview is being built in Lovable: https://lovable.dev/projects/d55e9ce3-6bcf-4706-88ad-4bb3aa0447f8
+## Build with Lovable
 
-**Status:** Prototype in progress. Never treat simulated transactions as real payments. Live payment processing will remain disabled pending provider onboarding, verified integrations and security testing.
+Open your project in the [Lovable editor](https://lovable.dev) and keep building.
 
-## Scope
-- Guest QR journey: side, relation, required name and phone, gifts/envelopes
-- Wedding admin dashboard and configurable receiving beneficiaries
-- Staff counter receiving and gift tracking
-- Tenant isolation and permissions (must be tested before production)
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
+- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
 
-Source code will be synced as the app build is available.
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+```sh
+git clone <this-repository-url>
+cd <repository-name>
+npm i
+npm run dev
+```
+
+## Built with
+
+- TanStack Start
+- TypeScript
+- React
+- Tailwind CSS
